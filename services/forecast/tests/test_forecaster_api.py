@@ -1,9 +1,8 @@
-from datetime import timezone
+from datetime import UTC
 
 import numpy as np
 import pytest
 from fastapi.testclient import TestClient
-
 from fsp_shared.demand import EventSpec
 
 from app import features as F
@@ -246,4 +245,4 @@ def test_forecast_latency_budget_for_all_pairs(bundle):
         times.append((time.perf_counter() - t0) * 1000)
     p95 = float(np.percentile(times, 95))
     assert p95 < 30.0, f"p95 {p95:.1f} ms (median {np.median(times):.1f} ms)"
-    assert T0.tzinfo is timezone.utc
+    assert T0.tzinfo is UTC

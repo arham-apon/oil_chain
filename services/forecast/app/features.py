@@ -27,7 +27,6 @@ from collections.abc import Iterable, Sequence
 
 import numpy as np
 import pandas as pd
-
 from fsp_shared import world_constants as wc
 from fsp_shared.demand import (
     EventLike,

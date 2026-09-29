@@ -13,13 +13,12 @@ from typing import Any
 import joblib
 import numpy as np
 import pandas as pd
-from sklearn.linear_model import Ridge
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
-
 from fsp_shared.demand import EventLike, noise_of, spike_active, spike_multiplier
 from fsp_shared.schemas import HorizonPoint
 from fsp_shared.timeutil import project_sim_time
+from sklearn.linear_model import Ridge
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
 
 from . import features as F
 
@@ -32,7 +31,7 @@ class LinearPredictor:
     """``y = ((x - mean) / scale) . coef + intercept + x[baseline]`` — a fitted scaler + ridge *residual* on the
     calendar baseline (D19), without sklearn overhead. Output is multiplier-normalised demand (D18)."""
 
-    __slots__ = ("mean", "scale", "coef", "intercept", "baseline_idx")
+    __slots__ = ("baseline_idx", "coef", "intercept", "mean", "scale")
 
     def __init__(
         self, mean: np.ndarray, scale: np.ndarray, coef: np.ndarray, intercept: float, baseline_idx: int = F.BASELINE_IDX
@@ -213,8 +212,8 @@ def fit_pair(station_id: str, fuel_type: str, frame: pd.DataFrame, alphas: Itera
         "beats_naive_formula": mae < naive_formula,
         "alpha": alpha,
         "alpha_grid_mae": grid,
-        "n_train": int(len(train)),
-        "n_val": int(len(val)),
+        "n_train": len(train),
+        "n_val": len(val),
         "val_start_tick": int(val["tick"].iloc[0]),
         "coefficients_scaled": coefs,
         "documented_noise": noise_of(station_id),

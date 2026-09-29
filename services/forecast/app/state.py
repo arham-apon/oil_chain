@@ -12,12 +12,11 @@ from datetime import datetime
 from typing import Any
 
 import numpy as np
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncEngine
-
 from fsp_shared import world_constants as wc
 from fsp_shared.demand import EventSpec
 from fsp_shared.timeutil import parse_sim_time
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncEngine
 
 TAIL_ROWS = 96  # demand rows kept per (station, fuel) for lag features (EWMA-16 is fully warm after ~64)
 

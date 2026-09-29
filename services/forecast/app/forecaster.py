@@ -6,13 +6,12 @@ import time
 from collections.abc import Sequence
 
 import numpy as np
-from pydantic import BaseModel
-
 from fsp_shared import world_constants as wc
 from fsp_shared.demand import baseline_horizon, spike_multiplier
 from fsp_shared.risk import compute_risk
 from fsp_shared.schemas import PairForecast
 from fsp_shared.timeutil import project_sim_time
+from pydantic import BaseModel
 
 from . import features as F
 from . import metrics as m

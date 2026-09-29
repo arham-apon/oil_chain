@@ -4,13 +4,12 @@ import json
 import os
 
 import pytest
-from prometheus_client import REGISTRY
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import create_async_engine
-
 from fsp_shared import migrate
 from fsp_shared import world_constants as wc
 from fsp_shared.demand import EventSpec
+from prometheus_client import REGISTRY
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.forecaster import Forecaster
 from app.state import StateCache

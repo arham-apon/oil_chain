@@ -10,14 +10,14 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Query, Response
-from pydantic import BaseModel, Field
-
-from fsp_shared import db, world_constants as wc
+from fsp_shared import db
+from fsp_shared import world_constants as wc
 from fsp_shared.bus import Bus
 from fsp_shared.config import Settings, get_settings
 from fsp_shared.logging import configure_logging, get_logger
 from fsp_shared.metrics import install_metrics
 from fsp_shared.schemas import BusEventType
+from pydantic import BaseModel, Field
 
 from . import metrics as m
 from .forecaster import Forecaster, NoStateError
@@ -110,7 +110,7 @@ class Runtime:
                     m.STATE_AGE.set(self.cache.world.age_s())
             try:
                 await asyncio.wait_for(self._wake.wait(), REFRESH_INTERVAL_S)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 pass
             self._wake.clear()
             await asyncio.sleep(REFRESH_MIN_GAP_S)  # coalesce bursts of events into one refresh

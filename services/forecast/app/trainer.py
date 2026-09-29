@@ -15,13 +15,12 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncEngine
-
 from fsp_shared import world_constants as wc
 from fsp_shared.demand import EventSpec
 from fsp_shared.logging import get_logger
 from fsp_shared.timeutil import parse_sim_time  # noqa: F401  (re-exported for tests)
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncEngine
 
 from . import features as F
 from . import metrics as m

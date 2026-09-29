@@ -1,6 +1,5 @@
 import numpy as np
 import pytest
-
 from fsp_shared.demand import EventSpec, baseline_demand_at
 
 from app import features as F

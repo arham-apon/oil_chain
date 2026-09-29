@@ -18,7 +18,7 @@ from fsp_shared.logging import get_logger
 from .metrics import GEMINI_CALLS, GEMINI_LATENCY
 
 log = get_logger("cognitive.llm")
-FALLBACK_MODELS = ("gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest")
+FALLBACK_MODELS = ("gemini-3.8-flash", "gemini-3.5-flash", "gemini-flash-latest", "gemini-2.5-flash-lite")
 
 
 class LLMUnavailable(Exception):
@@ -42,33 +42,48 @@ class GeminiLLM:
         try:
             from langchain_google_genai import ChatGoogleGenerativeAI
 
+            kwargs = {"thinking_budget": 0} if "2.5" in model else {}  # fast, no thinking
             return ChatGoogleGenerativeAI(model=model, temperature=0.1, api_key=self.key,
-                                          timeout=timeout or self.timeout_s, max_retries=1)
+                                          timeout=timeout or self.timeout_s, max_retries=1, **kwargs)
         except Exception as exc:  # noqa: BLE001 - library missing/incompatible -> template mode
             log.warning("gemini_client_unavailable", error=str(exc)[:200])
             self.enabled = False
             return None
 
     async def probe(self) -> None:
-        """C22: one test call at startup; switch to an available Flash model if needed."""
+        """C22: test the configured model at startup; fall back to an available Flash model if it is gone (404).
+        Connectivity errors (DNS not ready, network down) are retried in the background with backoff."""
         if not self.enabled:
             return
-        for model in (self.model_name, *[m for m in FALLBACK_MODELS if m != self.model_name]):
-            llm = self._make(model, timeout=10.0)
-            if llm is None:
+        delay = 5.0
+        while True:
+            network_error = False
+            for model in (self.model_name, *[m for m in FALLBACK_MODELS if m != self.model_name]):
+                llm = self._make(model, timeout=15.0)
+                if llm is None:
+                    return
+                try:
+                    await asyncio.wait_for(llm.ainvoke("Reply with the single word OK."), 20.0)
+                    if model != self.model_name:
+                        log.warning("gemini_model_fallback", configured=self.model_name, using=model)
+                    self.model_name, self._llm = model, self._make(model)
+                    self.breaker.record_success()
+                    log.info("gemini_ready", model=model)
+                    return
+                except Exception as exc:  # noqa: BLE001
+                    msg = f"{type(exc).__name__}: {str(exc)[:160]}"
+                    log.warning("gemini_probe_failed", model=model, error=msg)
+                    if "API key" in msg or "PERMISSION" in msg.upper() or "401" in msg or "403" in msg:
+                        log.warning("gemini_key_rejected_using_templates")
+                        return  # key problem: no model will work
+                    if "NOT_FOUND" not in msg and "404" not in msg:
+                        network_error = True
+                        break  # not a model problem: retry the whole probe later
+            if not network_error:
+                log.warning("gemini_unavailable_using_templates")
                 return
-            try:
-                await asyncio.wait_for(llm.ainvoke("Reply with the single word OK."), 12.0)
-                if model != self.model_name:
-                    log.warning("gemini_model_fallback", configured=self.model_name, using=model)
-                self.model_name, self._llm = model, self._make(model)
-                log.info("gemini_ready", model=model)
-                return
-            except Exception as exc:  # noqa: BLE001
-                log.warning("gemini_probe_failed", model=model, error=f"{type(exc).__name__}: {str(exc)[:160]}")
-                if "API key" in str(exc) or "PERMISSION" in str(exc).upper() or "401" in str(exc):
-                    break  # key problem: no model will work
-        log.warning("gemini_unavailable_using_templates")
+            await asyncio.sleep(delay)
+            delay = min(120.0, delay * 2)
 
     def llm(self, tools: list | None = None, structured: type | None = None, timeout: float | None = None):
         if not self.enabled or self._llm is None:

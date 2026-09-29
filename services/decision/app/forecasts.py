@@ -71,10 +71,10 @@ class ForecastClient:
     async def get(self, world: World, horizon: int) -> tuple[Pairs, str]:
         """(forecasts, source) where source is MODEL | BASELINE_FALLBACK. Never raises."""
         try:
-            pairs = await self.fetch(horizon + 3)
+            pairs = await self.fetch(horizon + 9)
             # forecast-svc may trail ingestion by a tick or two: tolerate that (trim the stale head), otherwise distrust it
             lag = world.tick - next(iter(pairs.values())).tick if pairs else 0
-            if not pairs or not 0 <= lag <= 2:
+            if not pairs or not 0 <= lag <= 8:  # 8 ticks = 1 s at SIMULATION_SPEED 8
                 raise RuntimeError(f"forecast tick mismatch (lag {lag})")
             for pf in pairs.values():
                 pf.horizon = [p for p in pf.horizon if p.tick > world.tick][:horizon]

@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import numpy as np
 import pandas as pd
-
 from fsp_shared import world_constants as wc
 from fsp_shared.demand import baseline_demand_at, noise_of, spike_multiplier
 
-T0 = datetime(2026, 1, 1, tzinfo=timezone.utc)
+T0 = datetime(2026, 1, 1, tzinfo=UTC)
 
 
 def sim_time(tick: int, tick_minutes: int = 15) -> datetime:

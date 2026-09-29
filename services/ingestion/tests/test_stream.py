@@ -274,7 +274,7 @@ async def test_poll_fallback_only_after_sse_down_over_five_seconds():
 
 
 async def test_heartbeat_catches_demand_history_up_but_ticks_do_not(monkeypatch):
-    import app.workers as workers
+    from app import workers
 
     monkeypatch.setattr(workers, "HEARTBEAT_S", 0.2)
     syncer, state = FakeSyncer(), IngestionState()
