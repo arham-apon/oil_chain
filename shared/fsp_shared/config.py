@@ -31,8 +31,11 @@ class Settings(BaseSettings):
     # --- AI (cloud only; secrets: no defaults, empty string = fallback mode) ----------
     TYPESAFE_API_KEY: str
     GEMINI_API_KEY: str
-    GEMINI_MODEL: str = "gemini-2.0-flash"
+    GEMINI_MODEL: str = "gemini-flash-lite-latest"  # 2.0/2.5 models are retired (DECISIONS D29)
     JEV_MODEL: str = "jev-latest"
+    LLM_PROVIDER: Literal["gemini", "groq"] = "gemini"  # System 2 provider for cognitive-svc
+    GROQ_API_KEY: str = ""  # only needed when LLM_PROVIDER=groq; empty = template/fallback mode
+    GROQ_MODEL: str = "openai/gpt-oss-120b"
     CHAOS_BAD_AI_KEYS: bool = False
 
     # --- Decision policy -------------------------------------------------------------

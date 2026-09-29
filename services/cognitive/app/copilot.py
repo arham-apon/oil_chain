@@ -17,7 +17,7 @@ from .tools import ToolBox
 
 log = get_logger("cognitive.copilot")
 MAX_STEPS = 6
-TURN_TIMEOUT_S = 20.0
+TURN_TIMEOUT_S = 60.0
 MAX_SESSIONS = 200
 
 SYSTEM = (
@@ -26,8 +26,8 @@ SYSTEM = (
     "depot->station only: station-tongi (only route-gazipur-tongi) and station-coxsbazar (only route-patiya-coxsbazar) "
     "have no alternate path; station-mirpur (route-gazipur-mirpur 2 ticks, route-patiya-mirpur 4 ticks) and "
     "station-karnaphuli (route-patiya-karnaphuli 2, route-gazipur-karnaphuli 4) can be rerouted. For what-if questions "
-    "call simulate_allocation (it supports overrides such as depot_derate={'depot-gazipur': 0.5}) and quote the "
-    "before/after stockout risks it returns. You may propose_allocation, which only stages a proposal for human "
+    "call simulate_allocation FIRST (it supports overrides such as depot_derate={'depot-gazipur': 0.5} and returns "
+    "before/after stockout risks for the affected pairs); prefer few, targeted tool calls. You may propose_allocation, which only stages a proposal for human "
     "approval; you can never dispatch fuel. Be concise and end with the key numbers. 1 tick = 15 simulated minutes."
 )
 
@@ -46,8 +46,8 @@ class Copilot:
             self.sessions.popitem(last=False)
         try:
             answer = await asyncio.wait_for(self._run(history, message, trace), TURN_TIMEOUT_S)
-            COPILOT_TURNS.labels("GEMINI").inc()
-            return {"answer": answer, "tool_calls": trace, "source": "GEMINI", "simulated_data": True}
+            COPILOT_TURNS.labels(self.llm.label).inc()
+            return {"answer": answer, "tool_calls": trace, "source": self.llm.label, "model": self.llm.model_name, "simulated_data": True}
         except (LLMUnavailable, TimeoutError) as exc:
             COPILOT_TURNS.labels("UNAVAILABLE").inc()
             snapshot = None
@@ -56,7 +56,7 @@ class Copilot:
             except Exception:  # noqa: BLE001
                 pass
             return {
-                "answer": "The AI copilot (Gemini) is currently unavailable, so I can't reason about this question. "
+                "answer": "The AI copilot is currently unavailable (LLM provider down or rate-limited), so I can't reason about this question. "
                           "The Decision Center, forecasts and what-if simulation keep working without it; the raw "
                           "network state is attached.",
                 "tool_calls": trace, "source": "UNAVAILABLE", "error": str(exc)[:200], "network_state": snapshot,
@@ -66,13 +66,19 @@ class Copilot:
     async def _run(self, history: list[BaseMessage], message: str, trace: list[dict]) -> str:
         lc_tools = self.tools.langchain_tools()
         by_name = {t.name: t for t in lc_tools}
-        model = self.llm.llm(tools=lc_tools, timeout=15.0)
+        model = self.llm.llm(tools=lc_tools, timeout=25.0)
         msgs: list[BaseMessage] = [SystemMessage(content=SYSTEM), *history[-10:], HumanMessage(content=message)]
         for _ in range(MAX_STEPS + 1):
-            ai: AIMessage = await self.llm.call(model, msgs, "copilot", timeout=15.0)
+            ai: AIMessage = await self.llm.call(model, msgs, "copilot", timeout=25.0)
             msgs.append(ai)
             calls = getattr(ai, "tool_calls", None) or []
-            if not calls or len(trace) >= MAX_STEPS:
+            if calls and len(trace) >= MAX_STEPS:
+                # step budget spent: force a final answer from the tool results gathered so far (no more tools)
+                msgs = [*msgs[:-1], HumanMessage(content="Tool budget exhausted. Answer the question now using ONLY the "
+                                                          "tool results above; say what data is missing.")]
+                ai = await self.llm.call(self.llm.llm(timeout=25.0), msgs, "copilot", timeout=25.0)
+                calls = []
+            if not calls:
                 text = ai.content if isinstance(ai.content, str) else " ".join(
                     p.get("text", "") for p in ai.content if isinstance(p, dict))
                 history.extend([HumanMessage(content=message), AIMessage(content=text)])
@@ -85,7 +91,7 @@ class Copilot:
                     ok = True
                 except Exception as exc:  # noqa: BLE001 - tool errors go back to the model
                     result, ok = {"error": f"{type(exc).__name__}: {str(exc)[:200]}"}, False
-                content = json.dumps(result, default=str)[:12000]
+                content = json.dumps(result, default=str)[:6000]
                 trace.append({"tool": call["name"], "args": call["args"], "ok": ok,
                               "ms": round((time.perf_counter() - started) * 1000, 1), "result_preview": content[:600]})
                 msgs.append(ToolMessage(content=content, tool_call_id=call.get("id") or call["name"]))

@@ -17,7 +17,7 @@ from .schemas import DispatchNarrative
 log = get_logger("cognitive.explain")
 # explanations are requested asynchronously (never on the dispatch path), so they may take longer than
 # GEMINI_TIMEOUT_MS; the breaker still counts timeouts as failures (DECISIONS D27)
-ASYNC_TIMEOUT_S = 12.0
+ASYNC_TIMEOUT_S = 30.0
 
 SYSTEM = (
     "You are the System 2 diagnostic engine of a SIMULATED fuel supply operations platform (training data, not real "
@@ -85,8 +85,8 @@ async def explain(facts: dict[str, Any], context: dict[str, Any], llm: GeminiLLM
         out: DispatchNarrative = await llm.call(runnable, msgs, "explain", timeout=ASYNC_TIMEOUT_S)
         problems = grounding.check(grounding.narrative_text(out), facts, context)
         if isinstance(out, DispatchNarrative) and not problems:
-            EXPLANATIONS.labels("GEMINI").inc()
-            return {"source": "GEMINI", "model": llm.model_name, "narrative": out.model_dump(), "validation": []}
+            EXPLANATIONS.labels(llm.label).inc()
+            return {"source": llm.label, "model": llm.model_name, "narrative": out.model_dump(), "validation": []}
         log.warning("narrative_rejected", problems=problems[:5])
         EXPLANATIONS.labels("TEMPLATE").inc()
         return {"source": "TEMPLATE", "narrative": template_narrative(facts), "validation": problems,

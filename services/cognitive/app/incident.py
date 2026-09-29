@@ -68,12 +68,12 @@ def template_brief(facts: dict[str, Any]) -> dict[str, Any]:
 
 async def build_brief(facts: dict[str, Any], llm: GeminiLLM) -> tuple[dict[str, Any], str]:
     try:
-        out = await llm.call(llm.llm(structured=IncidentBrief, timeout=12.0),
+        out = await llm.call(llm.llm(structured=IncidentBrief, timeout=30.0),
                              [SystemMessage(content=SYSTEM), HumanMessage(content="FACTS:\n" + json.dumps(facts, default=str))],
-                             "incident", timeout=12.0)
+                             "incident", timeout=30.0)
         if isinstance(out, IncidentBrief) and not grounding.check(grounding.narrative_text(out), facts):
-            INCIDENTS.labels("GEMINI").inc()
-            return out.model_dump(), "GEMINI"
+            INCIDENTS.labels(llm.label).inc()
+            return out.model_dump(), llm.label
     except LLMUnavailable:
         pass
     INCIDENTS.labels("TEMPLATE").inc()

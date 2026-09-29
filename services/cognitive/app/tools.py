@@ -70,13 +70,16 @@ class ToolBox:
                                 "status FROM supply_arrivals ORDER BY planned_tick LIMIT 40")
 
     async def get_forecast(self, station_id: str, fuel_type: str) -> dict:
-        """Demand forecast, burn rate, time-to-empty and stockout risk for one station and fuel."""
+        """Demand forecast, burn rate, time-to-empty and stockout risk for one station and fuel (DIESEL/PETROL/OCTANE)."""
+        fuel_type = fuel_type.upper()
         r = await self.http.get(f"{self.forecast_url}/forecast", params={"station_id": station_id,
                                                                          "fuel_type": fuel_type, "horizon": 24})
         r.raise_for_status()
         f = r.json()["forecasts"][0]
-        f["horizon"] = f["horizon"][:12]
-        return f
+        h = f.pop("horizon")
+        f["next_ticks_mean_liters"] = [round(p["mean"], 1) for p in h[:8]]
+        f["horizon_24_sum_liters"] = round(sum(p["mean"] for p in h), 1)
+        return {k: (round(v, 3) if isinstance(v, float) else v) for k, v in f.items()}
 
     async def get_decisions(self, status: str | None = None) -> list[dict]:
         """Recent platform decisions (optionally filtered by status, e.g. STAGED_REVIEW)."""
@@ -93,6 +96,7 @@ class ToolBox:
         """What-if: project stockout risk before/after dispatching qty liters on route_id, optionally under overrides
         (depot_derate: depot_id -> factor on dispatch capacity, route_disabled: route ids, demand_multiplier:
         station_id -> multiplier). Pure simulation; never dispatches. Use qty=0.0001 to evaluate overrides only."""
+        fuel_type = fuel_type.upper()
         body = {"proposals": [{"station_id": station_id, "fuel_type": fuel_type, "qty": qty, "route_id": route_id}],
                 "overrides": {"depot_derate": depot_derate or {}, "route_disabled": route_disabled or [],
                               "demand_multiplier": demand_multiplier or {}}}
@@ -100,12 +104,13 @@ class ToolBox:
         r.raise_for_status()
         out = r.json()
         for p in out.get("pairs", []):
-            p["curve"] = p["curve"][::4]
+            p.pop("curve", None)  # the model only needs the risk / time-to-empty numbers
         return out
 
     async def propose_allocation(self, station_id: str, fuel_type: str, qty: float, route_id: str,
                                  rationale: str = "") -> dict:
         """Create a STAGED_REVIEW proposal for the operator to approve in the Decision Center (never dispatches)."""
+        fuel_type = fuel_type.upper()
         r = await self.http.post(f"{self.decision_url}/decisions/manual", json={
             "station_id": station_id, "fuel_type": fuel_type, "qty": qty, "route_id": route_id,
             "operator": "copilot", "note": rationale[:300], "staged": True, "origin": "SYSTEM2_OVERRIDE"})

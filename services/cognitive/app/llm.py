@@ -18,7 +18,8 @@ from fsp_shared.logging import get_logger
 from .metrics import GEMINI_CALLS, GEMINI_LATENCY
 
 log = get_logger("cognitive.llm")
-FALLBACK_MODELS = ("gemini-3.8-flash", "gemini-3.5-flash", "gemini-flash-latest", "gemini-2.5-flash-lite")
+FALLBACK_MODELS = ("gemini-flash-lite-latest", "gemini-3.5-flash", "gemini-flash-latest", "gemini-3.8-flash")
+GROQ_FALLBACK_MODELS = ("openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b")
 
 
 class LLMUnavailable(Exception):
@@ -30,16 +31,29 @@ class GeminiLLM:
         self.s = settings
         self.breaker = breaker
         self.log_call = log_call
-        self.key = "invalid-chaos-key" if settings.CHAOS_BAD_AI_KEYS else settings.GEMINI_API_KEY
+        # LLM_PROVIDER=groq switches System 2 to Groq (OpenAI-compatible, LangChain ChatGroq); same breaker/fallbacks
+        self.provider = settings.LLM_PROVIDER
+        key = settings.GROQ_API_KEY if self.provider == "groq" else settings.GEMINI_API_KEY
+        self.key = "invalid-chaos-key" if settings.CHAOS_BAD_AI_KEYS else key
         self.enabled = bool(self.key)
-        self.model_name = settings.GEMINI_MODEL
+        self.model_name = settings.GROQ_MODEL if self.provider == "groq" else settings.GEMINI_MODEL
         self.timeout_s = settings.GEMINI_TIMEOUT_MS / 1000.0
         self._llm = None
         if self.enabled:
             self._llm = self._make(self.model_name)
 
+    @property
+    def label(self) -> str:
+        """Source label stored with every LLM output (GEMINI | GROQ)."""
+        return self.provider.upper()
+
     def _make(self, model: str, timeout: float | None = None):
         try:
+            if self.provider == "groq":
+                from langchain_groq import ChatGroq
+
+                return ChatGroq(model=model, temperature=0.1, api_key=self.key,
+                                timeout=timeout or self.timeout_s, max_retries=1)
             from langchain_google_genai import ChatGoogleGenerativeAI
 
             kwargs = {"thinking_budget": 0} if "2.5" in model else {}  # fast, no thinking
@@ -58,7 +72,8 @@ class GeminiLLM:
         delay = 5.0
         while True:
             network_error = False
-            for model in (self.model_name, *[m for m in FALLBACK_MODELS if m != self.model_name]):
+            fallbacks = GROQ_FALLBACK_MODELS if self.provider == "groq" else FALLBACK_MODELS
+            for model in (self.model_name, *[m for m in fallbacks if m != self.model_name]):
                 llm = self._make(model, timeout=15.0)
                 if llm is None:
                     return
@@ -76,9 +91,9 @@ class GeminiLLM:
                     if "API key" in msg or "PERMISSION" in msg.upper() or "401" in msg or "403" in msg:
                         log.warning("gemini_key_rejected_using_templates")
                         return  # key problem: no model will work
-                    if "NOT_FOUND" not in msg and "404" not in msg:
+                    if any(t in msg for t in ("ConnectError", "TimeoutError", "ConnectTimeout", "Name or service", "504", "503", "DEADLINE", "UNAVAILABLE")):
                         network_error = True
-                        break  # not a model problem: retry the whole probe later
+                        continue  # transient (network/overload): try the next model, retry the probe later if none works
             if not network_error:
                 log.warning("gemini_unavailable_using_templates")
                 return

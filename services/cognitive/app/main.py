@@ -114,7 +114,7 @@ def create_app(runtime_factory=None) -> FastAPI:
         if not rows:
             raise HTTPException(404, "decision not found")
         d = rows[0]
-        if d["explanation"] and d["explanation"].get("source") == "GEMINI":
+        if d["explanation"] and d["explanation"].get("source") in ("GEMINI", "GROQ"):
             return d["explanation"]
         tick = d["cycle_tick"]
         context = {
