@@ -1,0 +1,1 @@
+{"root":["./src/main.tsx","./src/components/layout.tsx","./src/components/ui/index.tsx","./src/config/network.ts","./src/lib/api.ts","./src/lib/utils.ts","./src/pages/audit.tsx","./src/pages/copilot.tsx","./src/pages/decisions.tsx","./src/pages/health.tsx","./src/pages/inventory.tsx","./src/pages/overview.tsx","./src/pages/risk.tsx","./src/pages/supply.tsx"],"version":"5.6.3"}

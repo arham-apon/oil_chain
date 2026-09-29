@@ -61,6 +61,8 @@ class Settings(BaseSettings):
     DECISION_URL: str = "http://decision-svc:8103"
     COGNITIVE_URL: str = "http://cognitive-svc:8104"
     INGESTION_URL: str = "http://ingestion-svc:8101"
+    PROMETHEUS_URL: str = "http://prometheus:9090"
+    GRAFANA_PUBLIC_URL: str = "http://localhost:3001"  # link shown in the UI (browser-facing, not compose DNS)
     AUTONOMOUS_DISPATCH: bool = True  # false = the loop still plans/stages but never auto-commits
     LOG_LEVEL: str = "INFO"
 
