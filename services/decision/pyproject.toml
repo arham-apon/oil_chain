@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fsp-decision"
+version = "0.1.0"
+description = "Decision service: MILP/heuristic planner, validator, Jev triage, gating, executor, what-if"
+requires-python = ">=3.12"
+dependencies = [
+  "fsp-shared",
+  "uvicorn[standard]>=0.30",
+  "pulp>=3.3,<4",  # 4.x no longer bundles CBC
+  "typesafe-sdk",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-asyncio", "respx", "ruff", "mypy"]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"

@@ -221,6 +221,11 @@ class FakeSyncer:
     def slow_sync_due(self):
         return False
 
+    def demand_behind(self):
+        return self.behind
+
+    behind = False
+
 
 async def test_coordinator_first_run_is_full_and_debounces_bursts():
     syncer, state = FakeSyncer(), IngestionState()
@@ -266,3 +271,25 @@ async def test_poll_fallback_only_after_sse_down_over_five_seconds():
         assert coord.ticks >= 1 and state.latest_tick_seen == 9
         task.cancel()
         await client.aclose()
+
+
+async def test_heartbeat_catches_demand_history_up_but_ticks_do_not(monkeypatch):
+    import app.workers as workers
+
+    monkeypatch.setattr(workers, "HEARTBEAT_S", 0.2)
+    syncer, state = FakeSyncer(), IngestionState()
+    syncer.behind = True
+    coord = SyncCoordinator(syncer, state, max_hz=100)
+    task = asyncio.create_task(coord.run())
+    await asyncio.sleep(0.1)  # initial full sync only
+    assert "slow" not in syncer.calls
+    coord.request_tick()  # a tick-triggered sync is not a heartbeat: demand catch-up waits (slow sync every 8 ticks)
+    await asyncio.sleep(0.1)
+    assert "slow" not in syncer.calls and "tick" in syncer.calls
+    await asyncio.sleep(0.4)  # heartbeat fires while demand is behind
+    assert "slow" in syncer.calls
+    n = syncer.calls.count("slow")
+    syncer.behind = False
+    await asyncio.sleep(0.5)
+    assert syncer.calls.count("slow") == n  # caught up: heartbeats stop pulling demand
+    task.cancel()

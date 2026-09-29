@@ -54,10 +54,11 @@ class SyncCoordinator:
     async def run(self) -> None:
         while True:
             timeout = HEARTBEAT_STALE_S if self.state.stale else HEARTBEAT_S
+            heartbeat = False
             try:
                 await asyncio.wait_for(self._wake.wait(), timeout)
             except TimeoutError:
-                pass  # heartbeat: sync anyway
+                heartbeat = True  # nothing happened for a while: sync anyway
             wait = self.min_interval - (time.monotonic() - self._last_start)
             if wait > 0:
                 await asyncio.sleep(wait)  # debounce; requests arriving meanwhile coalesce into this sync
@@ -69,7 +70,9 @@ class SyncCoordinator:
                     await self.syncer.full_sync()
                 else:
                     await self.syncer.tick_sync()
-                    if self.syncer.slow_sync_due():
+                    # slow sync is due every 8 ticks; on a heartbeat also catch demand history up so a paused (or
+                    # slowed-down) simulator never leaves the newest ticks missing
+                    if self.syncer.slow_sync_due() or (heartbeat and self.syncer.demand_behind()):
                         await self.syncer.slow_sync()
             except asyncio.CancelledError:
                 raise

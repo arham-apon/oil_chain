@@ -236,3 +236,37 @@ class BusMessage(BaseModel):
     type: str
     payload: dict[str, Any] = Field(default_factory=dict)
     ts: float = 0.0
+
+
+# --- forecasting (shared by forecast-svc and decision-svc's local fallback) ---------------------------
+
+
+class HorizonPoint(BaseModel):
+    tick: int
+    mean: float
+    sigma: float
+
+
+class RiskMetrics(BaseModel):
+    burn_rate_lph: float
+    t_empty_ticks: int | None = None  # first k ticks ahead with projected inventory <= 0 (None = not within horizon)
+    t_empty_hours: float | None = None
+    stockout_risk: float = 0.0  # max_k P(C_k > I(0) + arrivals_by_k), 0..1
+    min_projected_inventory: float | None = None
+
+
+class PairForecast(BaseModel):
+    station_id: str
+    fuel_type: FuelType
+    tick: int  # tick the forecast was made at
+    horizon: list[HorizonPoint]
+    burn_rate_lph: float
+    t_empty_ticks: int | None = None
+    t_empty_hours: float | None = None
+    stockout_risk: float = 0.0
+    residual_sigma: float
+    model_version: str | None = None
+    source: Literal["MODEL", "BASELINE_FALLBACK"]
+    current_inventory: float | None = None
+    inflight_liters: float = 0.0
+    data_stale: bool = False

@@ -219,13 +219,16 @@ async def upsert_supply(session: AsyncSession, arrivals: Iterable[SupplyArrival]
             "planned_tick": a.planned_tick,
             "actual_tick": a.actual_tick,
             "status": a.status,
+            # first-seen values are set on insert only (never in update_cols): shortfall/delay detection needs them
+            "first_quantity": a.quantity,
+            "first_planned_tick": a.planned_tick,
         }
         for a in arrivals
     ]
     if not rows:
         return
     stmt = pg_insert(SupplyArrivalRow).values(rows)
-    update_cols = {c: stmt.excluded[c] for c in rows[0] if c != "id"}
+    update_cols = {c: stmt.excluded[c] for c in rows[0] if c not in ("id", "first_quantity", "first_planned_tick")}
     update_cols["updated_at"] = func.now()  # type: ignore[assignment]
     await session.execute(stmt.on_conflict_do_update(index_elements=["id"], set_=update_cols))
 

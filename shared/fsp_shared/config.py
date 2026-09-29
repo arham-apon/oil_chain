@@ -54,6 +54,14 @@ class Settings(BaseSettings):
     SYNC_MAX_HZ: float = 4
     SNAPSHOT_RETENTION_TICKS: int = 2000
     DEMO_CONTROLS: bool = False
+    MODEL_DIR: str = "/models"  # forecast-svc model artifacts (mounted volume)
+
+    # --- internal service URLs (compose DNS names) --------------------------------------------------------------
+    FORECAST_URL: str = "http://forecast-svc:8102"
+    DECISION_URL: str = "http://decision-svc:8103"
+    COGNITIVE_URL: str = "http://cognitive-svc:8104"
+    INGESTION_URL: str = "http://ingestion-svc:8101"
+    AUTONOMOUS_DISPATCH: bool = True  # false = the loop still plans/stages but never auto-commits
     LOG_LEVEL: str = "INFO"
 
 

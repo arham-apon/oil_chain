@@ -64,9 +64,91 @@ services:
     networks: [fuel-net]
     restart: unless-stopped
 
+  forecast-svc:
+    build:
+      context: .
+      dockerfile: services/forecast/Dockerfile
+    env_file: .env
+    environment:
+      SIMULATOR_URL: http://simulator-api:8000
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379/0
+      MODEL_DIR: /models
+    volumes:
+      - models:/models
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    ports:
+      - "${FORECAST_HOST_PORT:-8102}:8102"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; urllib.request.urlopen('http://localhost:8102/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
+    networks: [fuel-net]
+    restart: unless-stopped
+
+  decision-svc:
+    build:
+      context: .
+      dockerfile: services/decision/Dockerfile
+    env_file: .env
+    environment:
+      SIMULATOR_URL: http://simulator-api:8000
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379/0
+      FORECAST_URL: http://forecast-svc:8102
+      COGNITIVE_URL: http://cognitive-svc:8104
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      simulator-api:
+        condition: service_started
+    ports:
+      - "${DECISION_HOST_PORT:-8103}:8103"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; urllib.request.urlopen('http://localhost:8103/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+    networks: [fuel-net]
+    restart: unless-stopped
+
+  cognitive-svc:
+    build:
+      context: .
+      dockerfile: services/cognitive/Dockerfile
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379/0
+      FORECAST_URL: http://forecast-svc:8102
+      DECISION_URL: http://decision-svc:8103
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${COGNITIVE_HOST_PORT:-8104}:8104"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; urllib.request.urlopen('http://localhost:8104/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+    networks: [fuel-net]
+    restart: unless-stopped
+
 networks:
   fuel-net:
     driver: bridge
 
 volumes:
   pgdata:
+  models:

@@ -338,6 +338,15 @@ class Syncer:
             return True
         return st.last_synced_tick - st.last_slow_tick >= SLOW_SYNC_EVERY_TICKS
 
+    def demand_behind(self) -> bool:
+        """True when newer ticks were synced than demand history covers (slow sync only runs every 8 ticks)."""
+        st = self.state
+        return (
+            st.last_demand_tick is not None
+            and st.last_synced_tick is not None
+            and st.last_synced_tick > st.last_demand_tick
+        )
+
     async def full_sync(self) -> int:
         """Everything: tick sync + supply arrivals + demand history (backfill when flagged)."""
         tick = await self.tick_sync()

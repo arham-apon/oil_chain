@@ -101,6 +101,8 @@ class SupplyArrivalRow(Base):
     actual_tick: Mapped[int | None] = mapped_column(Integer)
     status: Mapped[str | None] = mapped_column(Text)
     updated_at: Mapped[datetime | None] = mapped_column(_tz(), server_default=NOW)
+    first_quantity: Mapped[float | None] = mapped_column(Double)  # migration 0002
+    first_planned_tick: Mapped[int | None] = mapped_column(Integer)  # migration 0002
 
 
 class SimEventRow(Base):

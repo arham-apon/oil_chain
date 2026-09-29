@@ -79,7 +79,7 @@ async def test_upgrade_creates_all_tables_and_records_revision(engine):
     async with engine.connect() as conn:
         tables = set(await conn.run_sync(lambda c: inspect(c).get_table_names()))
     assert EXPECTED_TABLES <= tables and "alembic_version" in tables
-    assert await db.schema_revision(engine) == "0001" == db.HEAD_REVISION
+    assert await db.schema_revision(engine) == "0002" == db.HEAD_REVISION
     await db.wait_for_schema(engine, timeout_s=1)
 
 
@@ -133,7 +133,7 @@ async def test_partial_index_and_descending_indexes(engine):
 
 async def test_upgrade_is_idempotent_and_downgrade_works(engine):
     await migrate.upgrade_head(URL)  # second run is a no-op
-    assert await db.schema_revision(engine) == "0001"
+    assert await db.schema_revision(engine) == "0002"
 
     from alembic import command
 

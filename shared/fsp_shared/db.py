@@ -14,7 +14,7 @@ from contextlib import asynccontextmanager
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 
-HEAD_REVISION = "0001"
+HEAD_REVISION = "0002"
 
 
 def make_engine(database_url: str, *, pool_size: int = 10, echo: bool = False) -> AsyncEngine:

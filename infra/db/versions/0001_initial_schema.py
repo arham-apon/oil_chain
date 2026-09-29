@@ -151,3 +151,16 @@ def upgrade() -> None:
 def downgrade() -> None:
     for table in TABLES:
         op.execute(f"DROP TABLE IF EXISTS {table} CASCADE")
+
+
+
+
+
+
+
+
+
+
+
+
+
