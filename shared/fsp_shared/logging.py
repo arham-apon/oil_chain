@@ -48,6 +48,14 @@ def configure_logging(service: str, level: str = "INFO", stream: Any = None) -> 
     root = logging.getLogger()
     root.handlers[:] = [handler]
     root.setLevel(level.upper())
+    # uvicorn installs its own plain-text handlers: hand its loggers to the JSON root handler instead.
+    for name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
+        lg = logging.getLogger(name)
+        lg.handlers.clear()
+        lg.propagate = True
+    # one INFO line per outgoing HTTP request drowns everything else (health probe runs every 2 s)
+    for name in ("httpx", "httpcore"):
+        logging.getLogger(name).setLevel(logging.WARNING)
 
 
 def get_logger(name: str | None = None) -> Any:

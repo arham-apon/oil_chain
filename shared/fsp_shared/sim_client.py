@@ -323,10 +323,18 @@ class SimClient:
     def _mark_stream_activity(self) -> None:
         self.last_stream_activity = time.time()
 
-    def stream(self, read_timeout: float = sse.DEFAULT_READ_TIMEOUT_S) -> AsyncIterator[SSEEvent]:
-        """Async iterator over ``/v1/stream`` events. Raises ``StreamFaultError`` / ``StreamTimeoutError``."""
+    def stream(
+        self, read_timeout: float = sse.DEFAULT_READ_TIMEOUT_S, on_connect: Callable[[], None] | None = None
+    ) -> AsyncIterator[SSEEvent]:
+        """Async iterator over ``/v1/stream`` events. ``on_connect`` fires once the server answers 200
+        (before any event: an idle paused simulator only sends comments). Raises ``StreamFaultError`` /
+        ``StreamTimeoutError``."""
         return sse.stream_events(
-            self._http, "/v1/stream", read_timeout=read_timeout, on_activity=self._mark_stream_activity
+            self._http,
+            "/v1/stream",
+            read_timeout=read_timeout,
+            on_activity=self._mark_stream_activity,
+            on_connect=on_connect,
         )
 
     # ------------------------------------------------------------------------------

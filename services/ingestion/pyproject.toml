@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fsp-ingestion"
+version = "0.1.0"
+description = "Ingestion service: simulator SSE + REST sync into Postgres, events onto Redis"
+requires-python = ">=3.12"
+dependencies = [
+  "fsp-shared",
+  "uvicorn[standard]>=0.30",
+  "alembic>=1.13",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-asyncio", "respx", "fakeredis", "ruff", "mypy"]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"

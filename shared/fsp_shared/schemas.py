@@ -7,7 +7,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Annotated, Any, Literal, TypeVar
 
-from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
+from pydantic import AfterValidator, BaseModel, BeforeValidator, ConfigDict, Field
 
 from .timeutil import parse_sim_time
 
@@ -21,7 +21,18 @@ EventStatus = Literal["SCHEDULED", "ACTIVE", "RESOLVED"]
 AllocationStatus = Literal["PENDING", "IN_TRANSIT", "ARRIVED", "FAILED", "CANCELLED"]
 
 SimTime = Annotated[datetime, BeforeValidator(parse_sim_time)]
-FuelMap = dict[FuelType, float]
+NonNegative = Annotated[float, Field(ge=0)]
+
+
+def _require_all_fuels(value: dict) -> dict:
+    missing = {"DIESEL", "PETROL", "OCTANE"} - set(value)
+    if missing:
+        raise ValueError(f"missing fuel types: {sorted(missing)}")
+    return value
+
+
+# Tank/depot maps: all three fuels present, no negative volumes (malformed-data guard, spec §9.3).
+FuelMap = Annotated[dict[FuelType, NonNegative], AfterValidator(_require_all_fuels)]
 
 
 class _Sim(BaseModel):

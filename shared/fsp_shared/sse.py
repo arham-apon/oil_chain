@@ -74,6 +74,7 @@ async def stream_events(
     read_timeout: float = DEFAULT_READ_TIMEOUT_S,
     connect_timeout: float = 3.0,
     on_activity: Callable[[], None] | None = None,
+    on_connect: Callable[[], None] | None = None,
 ) -> AsyncIterator[SSEEvent]:
     """Open the stream and yield events until it closes. Raises :class:`StreamFaultError` on a 503 connect."""
     from .sim_client import parse_sim_error  # local import: avoid a cycle
@@ -89,6 +90,8 @@ async def stream_events(
                 if resp.status_code == 503 or err.kind is SimErrorKind.FAULT:
                     raise StreamFaultError(f"stream unavailable: {err.code} {err.message}")
                 raise SimAPIError(err, endpoint=path)
+            if on_connect:
+                on_connect()
             if on_activity:
                 on_activity()
             async for event in parse_lines(resp.aiter_lines(), on_activity):
