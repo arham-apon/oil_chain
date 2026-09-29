@@ -1,0 +1,11 @@
+services:
+  simulator-api:
+    image: asifmahmoud414/bup-fuel-supply-simulator:1.0.0
+    container_name: bup-simulator-api
+    environment:
+      SIMULATION_SPEED: ${SIMULATION_SPEED:-8}
+      TICK_MINUTES: ${TICK_MINUTES:-15}
+      SIMULATOR_START_MODE: ${SIMULATOR_START_MODE:-paused}
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
