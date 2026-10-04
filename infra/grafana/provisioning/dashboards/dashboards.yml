@@ -1,0 +1,7 @@
+apiVersion: 1
+providers:
+  - name: fsp
+    folder: Fuel Supply Platform
+    type: file
+    options:
+      path: /var/lib/grafana/dashboards

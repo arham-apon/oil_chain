@@ -224,7 +224,19 @@ class DecisionEngine:
         stale = world.stale or self.sim_fault_stale
         s = self.s
 
-        # 2 expire staged
+        # 2 auto-approve unreviewed staged proposals (review window elapsed), then expire the rest
+        if not dry_run and not stale and s.STAGED_AUTO_APPROVE_AFTER_TICKS > 0:
+            for d in await self.repo.by_status("STAGED_REVIEW"):
+                if world.tick - d["cycle_tick"] < s.STAGED_AUTO_APPROVE_AFTER_TICKS:
+                    continue
+                if await self.repo.transition(d["decision_id"], ("STAGED_REVIEW",), "AUTO_APPROVED",
+                                              operator="auto-approve-timeout"):
+                    await self.repo.audit(tick=world.tick, actor="decision-svc", action="decision.auto_approve_timeout",
+                                          entity_type="decision", entity_id=d["decision_id"], result="OK",
+                                          data={"waited_ticks": world.tick - d["cycle_tick"]})
+                    d = await self.repo.get_decision(d["decision_id"])
+                    await self.executor.execute(d, world)  # pre-flight re-validates on fresh state
+            world = await load_world(self.engine) or world
         if not dry_run:
             n = await self.repo.expire_staged(world.tick, s.STAGED_DECISION_TTL_TICKS)
             if n:

@@ -1,0 +1,28 @@
+groups:
+  - name: fsp
+    rules:
+      - alert: ServiceDown
+        expr: up{job="fsp-services"} == 0
+        for: 15s
+        labels: {severity: critical}
+        annotations: {summary: "{{ $labels.service }} is down"}
+      - alert: HighP95Latency
+        expr: histogram_quantile(0.95, sum by (le, service) (rate(http_request_duration_seconds_bucket[1m]))) > 0.25
+        for: 1m
+        labels: {severity: warning}
+        annotations: {summary: "p95 latency > 250 ms on {{ $labels.service }}"}
+      - alert: BreakerOpen
+        expr: breaker_state == 2
+        for: 5s
+        labels: {severity: warning}
+        annotations: {summary: "circuit breaker {{ $labels.dependency }} is OPEN (fallback active)"}
+      - alert: StaleSimulatorData
+        expr: sim_stale == 1
+        for: 5s
+        labels: {severity: warning}
+        annotations: {summary: "simulator serving stale data; autonomous dispatch suspended"}
+      - alert: LowServiceLevel
+        expr: sim_service_level < 0.95
+        for: 30s
+        labels: {severity: critical}
+        annotations: {summary: "service level below 95%"}

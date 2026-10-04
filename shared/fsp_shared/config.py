@@ -40,6 +40,9 @@ class Settings(BaseSettings):
     AUTO_APPROVE_NOUL_MIN: float = Field(default=0.85, ge=0, le=1)
     AUTO_APPROVE_URGENCY_MAX: float = 4.5
     STAGED_DECISION_TTL_TICKS: int = Field(default=16, ge=1)
+    # Staged proposals no operator acted on within N ticks are auto-approved (pre-flight re-run on fresh state).
+    # 0 = never (strict human-in-the-loop). Never applies while simulator data is stale.
+    STAGED_AUTO_APPROVE_AFTER_TICKS: int = Field(default=2, ge=0)
     MIN_LOT_LITERS: float = Field(default=500, ge=0)
     ROUTE_CAP_MODE: Literal["per_route_per_cycle", "per_allocation"] = "per_route_per_cycle"
     DEPOT_CONSTRAINT_DERATE: float = Field(default=0.5, gt=0, le=1)

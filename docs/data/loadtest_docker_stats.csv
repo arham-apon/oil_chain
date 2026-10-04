@@ -1,0 +1,12 @@
+oil_chain-grafana-1,0.12%,62.65MiB / 7.651GiB
+oil_chain-prometheus-1,0.16%,43.04MiB / 7.651GiB
+oil_chain-cadvisor-1,0.93%,35.64MiB / 7.651GiB
+oil_chain-frontend-1,0.00%,13.78MiB / 7.651GiB
+oil_chain-gateway-svc-1,0.81%,75.2MiB / 7.651GiB
+oil_chain-forecast-svc-1,3.57%,150MiB / 7.651GiB
+oil_chain-ingestion-svc-1,99.46%,142.2MiB / 7.651GiB
+oil_chain-cognitive-svc-1,0.13%,106.1MiB / 7.651GiB
+oil_chain-decision-svc-1,0.44%,88.37MiB / 7.651GiB
+bup-simulator-api,27.72%,83.71MiB / 7.651GiB
+oil_chain-postgres-1,8.28%,185.8MiB / 7.651GiB
+oil_chain-redis-1,0.74%,8.895MiB / 7.651GiB
